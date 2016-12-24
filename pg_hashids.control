@@ -1,0 +1,4 @@
+comment = 'pg_hashids'
+default_version = '1.0'
+
+relocatable = true
