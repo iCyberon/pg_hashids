@@ -20,9 +20,9 @@ char *to_char(text *what)
     return dup;
 }
 
-PG_FUNCTION_INFO_V1( hash_encode );
+PG_FUNCTION_INFO_V1( id_encode );
 Datum
-hash_encode( PG_FUNCTION_ARGS )
+id_encode( PG_FUNCTION_ARGS )
 {
   if (PG_ARGISNULL(0)) {
     PG_RETURN_NULL();
@@ -49,9 +49,9 @@ hash_encode( PG_FUNCTION_ARGS )
   PG_RETURN_TEXT_P( hash_string );
 }
 
-PG_FUNCTION_INFO_V1( hash_encode_salt );
+PG_FUNCTION_INFO_V1( id_encode_salt );
 Datum
-hash_encode_salt( PG_FUNCTION_ARGS )
+id_encode_salt( PG_FUNCTION_ARGS )
 {
   if (PG_ARGISNULL(0)) {
     PG_RETURN_NULL();
@@ -83,9 +83,48 @@ hash_encode_salt( PG_FUNCTION_ARGS )
   PG_RETURN_TEXT_P( hash_string );
 }
 
-PG_FUNCTION_INFO_V1( hash_decode );
+PG_FUNCTION_INFO_V1( id_encode_salt_alphabet );
 Datum
-hash_decode( PG_FUNCTION_ARGS )
+id_encode_salt_alphabet( PG_FUNCTION_ARGS )
+{
+  if (PG_ARGISNULL(0)) {
+    PG_RETURN_NULL();
+  }
+
+  if (PG_ARGISNULL(1)) {
+    PG_RETURN_NULL();
+  }
+
+  if (PG_ARGISNULL(3)) {
+    PG_RETURN_NULL();
+  }
+
+  // Declaration
+  text *hash_string;
+  hashids_t *hashids;
+  unsigned int bytes_encoded;
+  char hash[512];
+
+  // Arguments
+  unsigned long long input = PG_GETARG_INT64(0);
+  text* salt = PG_GETARG_TEXT_P(1);
+
+  hashids = hashids_init3(to_char(salt), (PG_ARGISNULL(2)) ? 0 : PG_GETARG_INT32(2), to_char(PG_GETARG_TEXT_P(3)));
+
+  bytes_encoded = hashids_encode_one(hashids, hash, input);
+  hash_string = (text *)palloc( bytes_encoded );
+
+  SET_VARSIZE(hash_string, bytes_encoded + VARHDRSZ);
+  strncpy( VARDATA(hash_string), hash, bytes_encoded );
+
+  hashids_free(hashids);
+  PG_RETURN_TEXT_P( hash_string );
+}
+
+
+PG_FUNCTION_INFO_V1( id_decode );
+Datum
+id_decode( PG_FUNCTION_ARGS )
 {
   if (PG_ARGISNULL(0)) {
     PG_RETURN_NULL();
@@ -104,7 +143,11 @@ hash_decode( PG_FUNCTION_ARGS )
   text* salt = PG_GETARG_TEXT_P(1);
   unsigned int length = PG_GETARG_INT64(2);
 
-  hashids = hashids_init2(to_char(salt), length);
+  if (PG_NARGS() == 3)
+    hashids = hashids_init2(to_char(salt), length);
+  else
+    hashids = hashids_init3(to_char(salt), length, to_char(PG_GETARG_TEXT_P(3)));
+
   hashids_decode(hashids, to_char(hash), numbers);
 
   hashids_free(hashids);

@@ -20,14 +20,15 @@
 /* exported hashids_errno */
 int hashids_errno;
 
-/* alloc/free */
-static void *
+/* default alloc() implementation */
+static inline void *
 hashids_alloc_f(size_t size)
 {
     return calloc(size, 1);
 }
 
-static void
+/* default free() implementation */
+static inline void
 hashids_free_f(void *ptr)
 {
     free(ptr);
@@ -35,6 +36,46 @@ hashids_free_f(void *ptr)
 
 void *(*_hashids_alloc)(size_t size) = hashids_alloc_f;
 void (*_hashids_free)(void *ptr) = hashids_free_f;
+
+/* fast ceil(x / y) for size_t arguments */
+static inline size_t
+hashids_div_ceil_size_t(size_t x, size_t y)
+{
+    return x / y + !!(x % y);
+}
+
+/* fast ceil(x / y) for unsigned short arguments */
+static inline unsigned short
+hashids_div_ceil_unsigned_short(unsigned short x, unsigned short y) {
+    return x / y + !!(x % y);
+}
+
+/* fast log2(x) for unsigned long long */
+const unsigned short hashids_log2_64_tab[64] = {
+    63,  0, 58,  1, 59, 47, 53,  2,
+    60, 39, 48, 27, 54, 33, 42,  3,
+    61, 51, 37, 40, 49, 18, 28, 20,
+    55, 30, 34, 11, 43, 14, 22,  4,
+    62, 57, 46, 52, 38, 26, 32, 41,
+    50, 36, 17, 19, 29, 10, 13, 21,
+    56, 45, 25, 31, 35, 16,  9, 12,
+    44, 24, 15,  8, 23,  7,  6,  5
+};
+
+static inline unsigned short
+hashids_log2_64(unsigned long long x)
+{
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+    x |= x >> 32;
+
+    /* pure evil : ieee abuse */
+    return hashids_log2_64_tab[
+        ((unsigned long long)((x - (x >> 1)) * 0x07EDD5E59A4E28C2)) >> 58];
+}
 
 /* shuffle loop step */
 #define hashids_shuffle_step(iter) \
@@ -52,10 +93,12 @@ hashids_shuffle(char *str, size_t str_length, char *salt, size_t salt_length)
     size_t j, v, p;
     char temp;
 
+    /* meh, meh */
     if (!salt_length) {
         return;
     }
 
+    /* pure evil : loop unroll */
     for (i = str_length - 1, v = 0, p = 0; i > 0; /* empty */) {
         switch (i % 32) {
             case 31: hashids_shuffle_step(i);
@@ -181,7 +224,7 @@ hashids_init3(const char *salt, size_t min_hash_length, const char *alphabet)
     /* allocate enough space for separators */
     len = strlen(HASHIDS_DEFAULT_SEPARATORS);
     j = (size_t)
-            (ceil((float)result->alphabet_length / HASHIDS_SEPARATOR_DIVISOR) + 1);
+        (ceil((float)result->alphabet_length / HASHIDS_SEPARATOR_DIVISOR) + 1);
     if (j < len + 1) {
         j = len + 1;
     }
@@ -203,7 +246,7 @@ hashids_init3(const char *salt, size_t min_hash_length, const char *alphabet)
 
             /* remove that separator */
             memmove(p, p + 1,
-                    strlen(result->alphabet) - (p - result->alphabet));
+                strlen(result->alphabet) - (p - result->alphabet));
         }
     }
 
@@ -216,7 +259,7 @@ hashids_init3(const char *salt, size_t min_hash_length, const char *alphabet)
     /* shuffle the separators */
     if (result->separators_count) {
         hashids_shuffle(result->separators, result->separators_count,
-                        result->salt, result->salt_length);
+            result->salt, result->salt_length);
     }
 
     /* check if we have any/enough separators */
@@ -224,7 +267,7 @@ hashids_init3(const char *salt, size_t min_hash_length, const char *alphabet)
         || (((float)result->alphabet_length / (float)result->separators_count)
             > HASHIDS_SEPARATOR_DIVISOR)) {
         size_t separators_count = (size_t)ceil(
-                (float)result->alphabet_length / HASHIDS_SEPARATOR_DIVISOR);
+            (float)result->alphabet_length / HASHIDS_SEPARATOR_DIVISOR);
 
         if (separators_count == 1) {
             separators_count = 2;
@@ -235,7 +278,7 @@ hashids_init3(const char *salt, size_t min_hash_length, const char *alphabet)
             size_t diff = separators_count - result->separators_count;
             strncat(result->separators, result->alphabet, diff);
             memmove(result->alphabet, result->alphabet + diff,
-                    result->alphabet_length - diff + 1);
+                result->alphabet_length - diff + 1);
 
             result->separators_count += diff;
             result->alphabet_length -= diff;
@@ -248,11 +291,11 @@ hashids_init3(const char *salt, size_t min_hash_length, const char *alphabet)
 
     /* shuffle alphabet */
     hashids_shuffle(result->alphabet, result->alphabet_length,
-                    result->salt, result->salt_length);
+        result->salt, result->salt_length);
 
     /* allocate guards */
-    result->guards_count = (size_t)ceil((float)result->alphabet_length
-                                        / HASHIDS_GUARD_DIVISOR);
+    result->guards_count = hashids_div_ceil_size_t(result->alphabet_length,
+        HASHIDS_GUARD_DIVISOR);
     result->guards = _hashids_alloc(result->guards_count + 1);
     if (HASHIDS_UNLIKELY(!result->guards)) {
         hashids_free(result);
@@ -264,14 +307,14 @@ hashids_init3(const char *salt, size_t min_hash_length, const char *alphabet)
         /* take some from separators */
         strncpy(result->guards, result->separators, result->guards_count);
         memmove(result->separators, result->separators + result->guards_count,
-                result->separators_count - result->guards_count + 1);
+            result->separators_count - result->guards_count + 1);
 
         result->separators_count -= result->guards_count;
     } else {
         /* take them from alphabet */
         strncpy(result->guards, result->alphabet, result->guards_count);
         memmove(result->alphabet, result->alphabet + result->guards_count,
-                result->alphabet_length - result->guards_count + 1);
+            result->alphabet_length - result->guards_count + 1);
 
         result->alphabet_length -= result->guards_count;
     }
@@ -280,7 +323,7 @@ hashids_init3(const char *salt, size_t min_hash_length, const char *alphabet)
     result->alphabet_copy_1 = _hashids_alloc(result->alphabet_length + 1);
     result->alphabet_copy_2 = _hashids_alloc(result->alphabet_length + 1);
     if (HASHIDS_UNLIKELY(!result->alphabet || !result->alphabet_copy_1
-                         || !result->alphabet_copy_2)) {
+        || !result->alphabet_copy_2)) {
         hashids_free(result);
         hashids_errno = HASHIDS_ERROR_ALLOC;
         return NULL;
@@ -310,7 +353,7 @@ hashids_init(const char *salt)
 /* estimate buffer size (generic) */
 size_t
 hashids_estimate_encoded_size(hashids_t *hashids,
-                              size_t numbers_count, unsigned long long *numbers)
+    size_t numbers_count, unsigned long long *numbers)
 {
     int i, result_len;
 
@@ -318,23 +361,31 @@ hashids_estimate_encoded_size(hashids_t *hashids,
         if (numbers[i] == 0) {
             result_len += 2;
         } else if (numbers[i] == 0xFFFFFFFFFFFFFFFFull) {
-            result_len += ceil(log2(numbers[i]) / log2(hashids->alphabet_length)) + 1;
+            result_len += hashids_div_ceil_unsigned_short(
+                hashids_log2_64(numbers[i]),
+                hashids_log2_64(hashids->alphabet_length)) - 1;
         } else {
-            result_len += ceil(log2(numbers[i] + 1) / log2(hashids->alphabet_length)) + 1;
+            result_len += hashids_div_ceil_unsigned_short(
+                hashids_log2_64(numbers[i] + 1),
+                hashids_log2_64(hashids->alphabet_length));
         }
     }
 
-    if (result_len <= hashids->min_hash_length) {
-        result_len = hashids->min_hash_length + 1;
+    if (numbers_count > 1) {
+        result_len += numbers_count - 1;
     }
 
-    return result_len;
+    if (result_len < hashids->min_hash_length) {
+        result_len = hashids->min_hash_length;
+    }
+
+    return result_len + 2 /* fast log2 & ceil sometimes undershoot by 1 */;
 }
 
 /* estimate buffer size (variadic) */
 size_t
 hashids_estimate_encoded_size_v(hashids_t *hashids,
-                                size_t numbers_count, ...)
+    size_t numbers_count, ...)
 {
     size_t i, result;
     unsigned long long *numbers;
@@ -362,7 +413,7 @@ hashids_estimate_encoded_size_v(hashids_t *hashids,
 /* encode many (generic) */
 size_t
 hashids_encode(hashids_t *hashids, char *buffer,
-               size_t numbers_count, unsigned long long *numbers)
+    size_t numbers_count, unsigned long long *numbers)
 {
     /* bail out if no numbers */
     if (HASHIDS_UNLIKELY(!numbers_count)) {
@@ -383,7 +434,7 @@ hashids_encode(hashids_t *hashids, char *buffer,
 
     /* copy the alphabet into internal buffer 1 */
     strncpy(hashids->alphabet_copy_1, hashids->alphabet,
-            hashids->alphabet_length);
+        hashids->alphabet_length);
 
     /* walk arguments once and generate a hash */
     for (i = 0, numbers_hash = 0; i < numbers_count; ++i) {
@@ -402,12 +453,12 @@ hashids_encode(hashids_t *hashids, char *buffer,
     hashids->alphabet_copy_2[0] = lottery;
     hashids->alphabet_copy_2[1] = '\0';
     strncat(hashids->alphabet_copy_2, hashids->salt,
-            hashids->alphabet_length - 1);
+        hashids->alphabet_length - 1);
     p = hashids->alphabet_copy_2 + hashids->salt_length + 1;
     p_max = hashids->alphabet_length - 1 - hashids->salt_length;
     if (p_max > 0) {
         strncat(hashids->alphabet_copy_2, hashids->alphabet,
-                p_max);
+            p_max);
     } else {
         hashids->alphabet_copy_2[hashids->alphabet_length] = '\0';
     }
@@ -423,7 +474,7 @@ hashids_encode(hashids_t *hashids, char *buffer,
 
         /* shuffle the alphabet */
         hashids_shuffle(hashids->alphabet_copy_1, hashids->alphabet_length,
-                        hashids->alphabet_copy_2, hashids->alphabet_length);
+            hashids->alphabet_copy_2, hashids->alphabet_length);
 
         /* hash the number */
         buffer_temp = buffer_end;
@@ -443,7 +494,7 @@ hashids_encode(hashids_t *hashids, char *buffer,
         if (i + 1 < numbers_count) {
             number_copy %= ch + i;
             *buffer_end = hashids->separators[number_copy %
-                                              hashids->separators_count];
+                hashids->separators_count];
             ++buffer_end;
         }
     }
@@ -465,20 +516,22 @@ hashids_encode(hashids_t *hashids, char *buffer,
             ++result_len;
 
             /* pad with half alphabet before and after */
-            half_length_ceil = ceil((float)hashids->alphabet_length / 2);
+            half_length_ceil = hashids_div_ceil_size_t(
+                hashids->alphabet_length, 2);
             half_length_floor = floor((float)hashids->alphabet_length / 2);
 
             /* pad, pad, pad */
             while (result_len < hashids->min_hash_length) {
                 /* shuffle the alphabet */
                 strncpy(hashids->alphabet_copy_2, hashids->alphabet_copy_1,
-                        hashids->alphabet_length);
+                    hashids->alphabet_length);
                 hashids_shuffle(hashids->alphabet_copy_1,
-                                hashids->alphabet_length, hashids->alphabet_copy_2,
-                                hashids->alphabet_length);
+                    hashids->alphabet_length, hashids->alphabet_copy_2,
+                    hashids->alphabet_length);
 
                 /* left pad from the end of the alphabet */
-                i = ceil((float)(hashids->min_hash_length - result_len) / 2);
+                i = hashids_div_ceil_size_t(
+                    hashids->min_hash_length - result_len, 2);
                 /* right pad from the beginning */
                 j = floor((float)(hashids->min_hash_length - result_len) / 2);
 
@@ -499,7 +552,7 @@ hashids_encode(hashids_t *hashids, char *buffer,
                 memmove(buffer + i, buffer, result_len);
                 /* pad left */
                 memmove(buffer,
-                        hashids->alphabet_copy_1 + hashids->alphabet_length - i, i);
+                    hashids->alphabet_copy_1 + hashids->alphabet_length - i, i);
                 /* pad right */
                 memmove(buffer + i + result_len, hashids->alphabet_copy_1, j);
 
@@ -516,7 +569,7 @@ hashids_encode(hashids_t *hashids, char *buffer,
 /* encode many (variadic) */
 size_t
 hashids_encode_v(hashids_t *hashids, char *buffer,
-                 size_t numbers_count, ...)
+    size_t numbers_count, ...)
 {
     int i;
     size_t result;
@@ -545,7 +598,7 @@ hashids_encode_v(hashids_t *hashids, char *buffer,
 /* encode one */
 size_t
 hashids_encode_one(hashids_t *hashids, char *buffer,
-                   unsigned long long number)
+    unsigned long long number)
 {
     return hashids_encode(hashids, buffer, 1, &number);
 }
@@ -596,7 +649,7 @@ hashids_numbers_count(hashids_t *hashids, char *str)
 /* decode */
 size_t
 hashids_decode(hashids_t *hashids, char *str,
-               unsigned long long *numbers)
+    unsigned long long *numbers)
 {
     size_t numbers_count;
     unsigned long long number;
@@ -627,25 +680,25 @@ hashids_decode(hashids_t *hashids, char *str,
 
     /* copy the alphabet into internal buffer 1 */
     strncpy(hashids->alphabet_copy_1, hashids->alphabet,
-            hashids->alphabet_length);
+        hashids->alphabet_length);
 
     /* alphabet-like buffer used for salt at each iteration */
     hashids->alphabet_copy_2[0] = lottery;
     hashids->alphabet_copy_2[1] = '\0';
     strncat(hashids->alphabet_copy_2, hashids->salt,
-            hashids->alphabet_length - 1);
+        hashids->alphabet_length - 1);
     p = hashids->alphabet_copy_2 + hashids->salt_length + 1;
     p_max = hashids->alphabet_length - 1 - hashids->salt_length;
     if (p_max > 0) {
         strncat(hashids->alphabet_copy_2, hashids->alphabet,
-                p_max);
+            p_max);
     } else {
         hashids->alphabet_copy_2[hashids->alphabet_length] = '\0';
     }
 
     /* first shuffle */
     hashids_shuffle(hashids->alphabet_copy_1, hashids->alphabet_length,
-                    hashids->alphabet_copy_2, hashids->alphabet_length);
+        hashids->alphabet_copy_2, hashids->alphabet_length);
 
     /* parse */
     number = 0;
@@ -662,7 +715,7 @@ hashids_decode(hashids_t *hashids, char *str,
                 strncpy(p, hashids->alphabet_copy_1, p_max);
             }
             hashids_shuffle(hashids->alphabet_copy_1, hashids->alphabet_length,
-                            hashids->alphabet_copy_2, hashids->alphabet_length);
+                hashids->alphabet_copy_2, hashids->alphabet_length);
 
             str++;
             continue;
@@ -687,7 +740,7 @@ hashids_decode(hashids_t *hashids, char *str,
 /* encode hex */
 size_t
 hashids_encode_hex(hashids_t *hashids, char *buffer,
-                   const char *hex_str)
+    const char *hex_str)
 {
     int len;
     char *temp, *p;
