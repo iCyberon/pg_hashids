@@ -415,17 +415,17 @@ size_t
 hashids_encode(hashids_t *hashids, char *buffer,
     size_t numbers_count, unsigned long long *numbers)
 {
+    size_t i, j, result_len, guard_index, half_length_ceil, half_length_floor;
+    unsigned long long number, number_copy, numbers_hash;
+    int p_max;
+    char lottery, ch, temp_ch, *p, *buffer_end, *buffer_temp;
+
     /* bail out if no numbers */
     if (HASHIDS_UNLIKELY(!numbers_count)) {
         buffer[0] = '\0';
 
         return 0;
     }
-
-    size_t i, j, result_len, guard_index, half_length_ceil, half_length_floor;
-    unsigned long long number, number_copy, numbers_hash;
-    int p_max;
-    char lottery, ch, temp_ch, *p, *buffer_end, *buffer_temp;
 
     /* return an estimation if no buffer */
     if (HASHIDS_UNLIKELY(!buffer)) {

@@ -130,6 +130,7 @@ id_decode( PG_FUNCTION_ARGS )
   // Declaration
   hashids_t *hashids;
   unsigned long long *numbers;
+  unsigned long long *resultValues;
   int numbers_count;
 
   ArrayType* resultArray;
@@ -151,7 +152,7 @@ id_decode( PG_FUNCTION_ARGS )
   hashids_free(hashids);
 
   resultArray = alloc_array(numbers_count);
-  unsigned long long *resultValues = (unsigned long long *)ARR_DATA_PTR(resultArray);
+  resultValues = (unsigned long long *)ARR_DATA_PTR(resultArray);
 
   memcpy(resultValues, numbers, numbers_count * sizeof(unsigned long long));
 
