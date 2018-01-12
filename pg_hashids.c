@@ -54,7 +54,7 @@ id_encode( PG_FUNCTION_ARGS )
   char* hash;
 
   // Arguments
-  number = PG_GETARG_INT32(0);
+  number = PG_GETARG_INT64(0);
 
   if (PG_NARGS() == 2) {
     hashids = hashids_init2(to_char(PG_GETARG_TEXT_P(1)), 0);
