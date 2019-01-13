@@ -66,7 +66,7 @@ id_encode( PG_FUNCTION_ARGS )
     hashids = hashids_init(NULL);
   }
 
-  hash = calloc(hashids_estimate_encoded_size(hashids, 1, &number), 1);
+  hash = palloc0(hashids_estimate_encoded_size(hashids, 1, &number));
 
   bytes_encoded = hashids_encode_one(hashids, hash, number);
   hash_string = (text *)palloc( bytes_encoded );
@@ -77,7 +77,7 @@ id_encode( PG_FUNCTION_ARGS )
   hashids_free(hashids);
   PG_RETURN_TEXT_P( hash_string );
 
-  free(hash);
+  pfree(hash);
 }
 
 PG_FUNCTION_INFO_V1( id_encode_array );
@@ -108,7 +108,7 @@ id_encode_array( PG_FUNCTION_ARGS )
     hashids = hashids_init(NULL);
   }
 
-  hash = calloc(hashids_estimate_encoded_size(hashids, numbers_count, (unsigned long long*) ARR_DATA_PTR(numbers)), 1);
+  hash = palloc0(hashids_estimate_encoded_size(hashids, numbers_count, (unsigned long long*) ARR_DATA_PTR(numbers)));
 
   bytes_encoded = hashids_encode(hashids, hash, numbers_count, (unsigned long long*) ARR_DATA_PTR(numbers));
   hash_string = (text *)palloc( bytes_encoded );
@@ -119,7 +119,7 @@ id_encode_array( PG_FUNCTION_ARGS )
   hashids_free(hashids);
   PG_RETURN_TEXT_P( hash_string );
 
-  free(hash);
+  pfree(hash);
 }
 
 
@@ -146,7 +146,7 @@ id_decode( PG_FUNCTION_ARGS )
   }
 
   numbers_count = hashids_numbers_count(hashids, to_char(PG_GETARG_TEXT_P(0)));
-  numbers = calloc(numbers_count, sizeof(unsigned long long));
+  numbers = palloc0(numbers_count * sizeof(unsigned long long));
 
   hashids_decode(hashids, to_char(PG_GETARG_TEXT_P(0)), numbers);
   hashids_free(hashids);
@@ -158,7 +158,7 @@ id_decode( PG_FUNCTION_ARGS )
 
   PG_RETURN_ARRAYTYPE_P(resultArray);
 
-  free(numbers);
+  pfree(numbers);
 }
 
 PG_FUNCTION_INFO_V1( id_decode_once );
@@ -181,12 +181,12 @@ id_decode_once( PG_FUNCTION_ARGS )
   }
 
   numbers_count = hashids_numbers_count(hashids, to_char(PG_GETARG_TEXT_P(0)));
-  numbers = calloc(numbers_count, sizeof(unsigned long long));
+  numbers = palloc0(numbers_count * sizeof(unsigned long long));
 
   hashids_decode(hashids, to_char(PG_GETARG_TEXT_P(0)), numbers);
   hashids_free(hashids);
 
   PG_RETURN_INT64( numbers[0] );
 
-  free(numbers);
+  pfree(numbers);
 }
