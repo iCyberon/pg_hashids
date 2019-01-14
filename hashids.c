@@ -6,6 +6,8 @@
 
 #include "hashids.h"
 
+#include "postgres.h"
+
 #ifndef __has_builtin
 #   define __has_builtin(x) (0)
 #endif
@@ -24,14 +26,14 @@ int hashids_errno;
 static inline void *
 hashids_alloc_f(size_t size)
 {
-    return calloc(size, 1);
+    return palloc0(size);
 }
 
 /* default free() implementation */
 static inline void
 hashids_free_f(void *ptr)
 {
-    free(ptr);
+    pfree(ptr);
 }
 
 void *(*_hashids_alloc)(size_t size) = hashids_alloc_f;
