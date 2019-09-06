@@ -69,7 +69,7 @@ id_encode( PG_FUNCTION_ARGS )
   hash = palloc0(hashids_estimate_encoded_size(hashids, 1, &number));
 
   bytes_encoded = hashids_encode_one(hashids, hash, number);
-  hash_string = (text *)palloc( bytes_encoded );
+  hash_string = (text *)palloc(bytes_encoded + VARHDRSZ);
 
   SET_VARSIZE(hash_string, bytes_encoded + VARHDRSZ);
   strncpy( VARDATA(hash_string), hash, bytes_encoded );
