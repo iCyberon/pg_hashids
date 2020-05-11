@@ -21,7 +21,7 @@ PG_FUNCTION_INFO_V1(id_decode_once);
 static ArrayType *new_intArrayType(int num)
 {
   ArrayType *r;
-  int nbytes = ARR_OVERHEAD_NONULLS(1) + sizeof(unsigned long long) * num;
+  int nbytes = ARR_OVERHEAD_NONULLS(1) + sizeof(int64) * num;
 
   r = (ArrayType *) palloc0(nbytes);
 
@@ -39,7 +39,7 @@ Datum
 id_encode(PG_FUNCTION_ARGS)
 {
   // Declaration
-  unsigned long long number;
+  int64 number;
   text *hash_string;
   hashids_t *hashids;
 
@@ -59,9 +59,12 @@ id_encode(PG_FUNCTION_ARGS)
     hashids = hashids_init(NULL);
   }
 
-  hash = palloc0(hashids_estimate_encoded_size(hashids, 1, &number));
-  bytes_encoded = hashids_encode_one(hashids, hash, number);
+  hash = palloc0(hashids_estimate_encoded_size(hashids, 1, (unsigned long long *) &number));
+  bytes_encoded = hashids_encode_one(hashids, hash, (unsigned long long) number);
   hash_string = cstring_to_text_with_len(hash, bytes_encoded);
+
+  hashids_free(hashids);
+  pfree(hash);
 
   PG_RETURN_TEXT_P(hash_string);
 }
@@ -97,6 +100,9 @@ id_encode_array(PG_FUNCTION_ARGS)
   bytes_encoded = hashids_encode(hashids, hash, numbers_count, (unsigned long long *) ARR_DATA_PTR(numbers));
   hash_string = cstring_to_text_with_len(hash, bytes_encoded);
 
+  hashids_free(hashids);
+  pfree(hash);
+
   PG_RETURN_TEXT_P(hash_string);
 }
 
@@ -105,7 +111,7 @@ id_decode(PG_FUNCTION_ARGS)
 {
   // Declaration
   hashids_t *hashids;
-  unsigned long long *numbers, *resultValues;
+  int64 *numbers, *resultValues;
   char *hash;
   int numbers_count;
   ArrayType *resultArray;
@@ -122,12 +128,17 @@ id_decode(PG_FUNCTION_ARGS)
 
   hash = text_to_cstring(PG_GETARG_TEXT_P(0));
   numbers_count = hashids_numbers_count(hashids, hash);
-  numbers = palloc0(numbers_count * sizeof(unsigned long long));
-  hashids_decode(hashids, hash, numbers);
+  numbers = palloc0(numbers_count * sizeof(int64));
+  hashids_decode(hashids, hash, (unsigned long long *) numbers);
+
+  hashids_free(hashids);
+  pfree(hash);
 
   resultArray = new_intArrayType(numbers_count);
-  resultValues = (unsigned long long *) ARR_DATA_PTR(resultArray);
+  resultValues = (int64 *) ARR_DATA_PTR(resultArray);
   memcpy(resultValues, numbers, numbers_count * sizeof(int64));
+
+  pfree(numbers);
 
   PG_RETURN_ARRAYTYPE_P(resultArray);
 }
@@ -137,7 +148,8 @@ id_decode_once(PG_FUNCTION_ARGS)
 {
   // Declaration
   hashids_t *hashids;
-  unsigned long long *numbers;
+  int64 *numbers;
+  int64 result;
   char *hash;
   int numbers_count;
 
@@ -153,8 +165,15 @@ id_decode_once(PG_FUNCTION_ARGS)
 
   hash = text_to_cstring(PG_GETARG_TEXT_P(0));
   numbers_count = hashids_numbers_count(hashids, hash);
-  numbers = palloc0(numbers_count * sizeof(unsigned long long));
-  hashids_decode(hashids, hash, numbers);
+  numbers = palloc0(numbers_count * sizeof(int64));
+  hashids_decode(hashids, hash, (unsigned long long *) numbers);
 
-  PG_RETURN_INT64(numbers[0]);
+  hashids_free(hashids);
+  pfree(hash);
+
+  result = numbers[0];
+
+  pfree(numbers);
+
+  PG_RETURN_INT64(result);
 }
