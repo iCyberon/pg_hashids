@@ -86,6 +86,9 @@ id_encode_array(PG_FUNCTION_ARGS)
   numbers = PG_GETARG_ARRAYTYPE_P(0);
   numbers_count = ARR_DIMS(numbers)[0];
 
+  if (array_contains_nulls(numbers))
+    PG_RETURN_NULL();
+
   if (PG_NARGS() == 2) {
     hashids = hashids_init2(text_to_cstring(PG_GETARG_TEXT_P(1)), 0);
   } else if (PG_NARGS() == 3) {
