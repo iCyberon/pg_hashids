@@ -1,4 +1,4 @@
-comment = 'pg_hashids'
 default_version = '1.2.1'
-
+comment = 'pg_hashids'
+module_pathname = '$libdir/pg_hashids'
 relocatable = true
