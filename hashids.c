@@ -5,9 +5,9 @@
 #include <math.h>
 
 #include "hashids.h"
-
 #include "postgres.h"
 
+/* branch prediction hinting */
 #ifndef __has_builtin
 #   define __has_builtin(x) (0)
 #endif
@@ -896,7 +896,7 @@ hashids_decode_hex(hashids_t *hashids, char *str, char *output)
         return 0;
     }
 
-    result = hashids_decode(hashids, str, &number, 1);
+    result = hashids_decode_unsafe(hashids, str, &number);
 
     if (result != 1) {
         return 0;
@@ -920,7 +920,7 @@ hashids_decode_hex(hashids_t *hashids, char *str, char *output)
     temp--;
     *temp = 0;
 
-    for (i = 0; i < (temp - output) / 2; ++i) {
+    for (i = 0; i < (size_t)((temp - output) / 2); ++i) {
         ch = *(output + i);
         *(output + i) = *(temp - 1 - i);
         *(temp - 1 - i) = ch;
