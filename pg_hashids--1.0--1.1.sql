@@ -1,4 +1,3 @@
--- use CREATE EXTENSION
 \echo Use "CREATE EXTENSION pg_hashids" to load this file. \quit
 
 -- v1
@@ -11,7 +10,7 @@ CREATE OR REPLACE FUNCTION hash_encode(BIGINT, TEXT, INT) RETURNS TEXT
 CREATE OR REPLACE FUNCTION hash_decode(TEXT, TEXT, INT) RETURNS INT
   AS 'pg_hashids', 'id_decode_once' LANGUAGE C;
 
--- v1.2
+-- v1.1
 CREATE OR REPLACE FUNCTION id_encode(BIGINT) RETURNS TEXT
   AS 'pg_hashids', 'id_encode' LANGUAGE C;
 CREATE OR REPLACE FUNCTION id_encode(BIGINT, TEXT) RETURNS TEXT
