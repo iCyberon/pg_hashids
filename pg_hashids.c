@@ -73,7 +73,7 @@ Datum
 id_encode_array(PG_FUNCTION_ARGS)
 {
   ArrayType *numbers;
-  int numbers_count;
+  size_t numbers_count;
 
   // Declaration
   text *hash_string;
@@ -86,9 +86,9 @@ id_encode_array(PG_FUNCTION_ARGS)
   numbers = PG_GETARG_ARRAYTYPE_P(0);
   numbers_count = ARR_DIMS(numbers)[0];
 
-  if (array_contains_nulls(numbers))
+  if (array_contains_nulls(numbers)) {
     PG_RETURN_NULL();
-
+  }
   if (PG_NARGS() == 2) {
     hashids = hashids_init2(text_to_cstring(PG_GETARG_TEXT_P(1)), 0);
   } else if (PG_NARGS() == 3) {
@@ -116,7 +116,7 @@ id_decode(PG_FUNCTION_ARGS)
   hashids_t *hashids;
   int64 *numbers, *resultValues;
   char *hash;
-  int numbers_count;
+  size_t numbers_count;
   ArrayType *resultArray;
 
   if (PG_NARGS() == 2) {
@@ -132,7 +132,7 @@ id_decode(PG_FUNCTION_ARGS)
   hash = text_to_cstring(PG_GETARG_TEXT_P(0));
   numbers_count = hashids_numbers_count(hashids, hash);
   numbers = palloc0(numbers_count * sizeof(int64));
-  hashids_decode(hashids, hash, (unsigned long long *) numbers);
+  hashids_decode(hashids, hash, (unsigned long long *) numbers, numbers_count);
 
   hashids_free(hashids);
   pfree(hash);
@@ -151,10 +151,9 @@ id_decode_once(PG_FUNCTION_ARGS)
 {
   // Declaration
   hashids_t *hashids;
-  int64 *numbers;
-  int64 result;
+  int64 number;
   char *hash;
-  int numbers_count;
+  size_t numbers_count;
 
   if (PG_NARGS() == 2) {
     hashids = hashids_init2(text_to_cstring(PG_GETARG_TEXT_P(1)), 0);
@@ -168,15 +167,13 @@ id_decode_once(PG_FUNCTION_ARGS)
 
   hash = text_to_cstring(PG_GETARG_TEXT_P(0));
   numbers_count = hashids_numbers_count(hashids, hash);
-  numbers = palloc0(numbers_count * sizeof(int64));
-  hashids_decode(hashids, hash, (unsigned long long *) numbers);
+  if (numbers_count == 0) {
+    PG_RETURN_NULL();
+  }
+  hashids_decode(hashids, hash, (unsigned long long *) &number, 1);
 
   hashids_free(hashids);
   pfree(hash);
 
-  result = numbers[0];
-
-  pfree(numbers);
-
-  PG_RETURN_INT64(result);
+  PG_RETURN_INT64(number);
 }

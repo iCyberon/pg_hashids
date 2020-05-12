@@ -4,10 +4,10 @@
 #include <stdlib.h>
 
 /* version constants */
-#define HASHIDS_VERSION "1.1.3"
+#define HASHIDS_VERSION "1.2.1"
 #define HASHIDS_VERSION_MAJOR 1
-#define HASHIDS_VERSION_MINOR 1
-#define HASHIDS_VERSION_PATCH 3
+#define HASHIDS_VERSION_MINOR 2
+#define HASHIDS_VERSION_PATCH 1
 
 /* minimal alphabet length */
 #define HASHIDS_MIN_ALPHABET_LENGTH 16u
@@ -33,15 +33,16 @@
 #define HASHIDS_DEFAULT_SEPARATORS "cfhistuCFHISTU"
 
 /* error codes */
-#define HASHIDS_ERROR_OK 0
-#define HASHIDS_ERROR_ALLOC -1
-#define HASHIDS_ERROR_ALPHABET_LENGTH -2
-#define HASHIDS_ERROR_ALPHABET_SPACE -3
-#define HASHIDS_ERROR_INVALID_HASH -4
-#define HASHIDS_ERROR_INVALID_NUMBER -5
+#define HASHIDS_ERROR_OK                0
+#define HASHIDS_ERROR_ALLOC             -1
+#define HASHIDS_ERROR_ALPHABET_LENGTH   -2
+#define HASHIDS_ERROR_ALPHABET_SPACE    -3
+#define HASHIDS_ERROR_INVALID_HASH      -4
+#define HASHIDS_ERROR_INVALID_NUMBER    -5
 
-/* exported hashids_errno */
-extern int hashids_errno;
+/* thread-safe hashids_errno indirection */
+extern int *__hashids_errno_addr(void);
+#define hashids_errno (*__hashids_errno_addr())
 
 /* alloc & free */
 extern void *(*_hashids_alloc)(size_t size);
@@ -85,35 +86,40 @@ hashids_t *
 hashids_init(const char *salt);
 
 size_t
-hashids_estimate_encoded_size(hashids_t *hashids,
-    size_t numbers_count, unsigned long long *numbers);
+hashids_estimate_encoded_size(hashids_t *hashids, size_t numbers_count,
+    unsigned long long *numbers);
 
 size_t
-hashids_estimate_encoded_size_v(hashids_t *hashids,
-    size_t numbers_count, ...);
+hashids_estimate_encoded_size_v(hashids_t *hashids, size_t numbers_count, ...);
 
 size_t
-hashids_encode(hashids_t *hashids, char *buffer,
-    size_t numbers_count, unsigned long long *numbers);
+hashids_encode(hashids_t *hashids, char *buffer, size_t numbers_count,
+    unsigned long long *numbers);
 
 size_t
-hashids_encode_v(hashids_t *hashids, char *buffer,
-    size_t numbers_count, ...);
+hashids_encode_v(hashids_t *hashids, char *buffer, size_t numbers_count, ...);
 
 size_t
 hashids_encode_one(hashids_t *hashids, char *buffer,
     unsigned long long number);
 
 size_t
-hashids_numbers_count(hashids_t *hashids, char *str);
+hashids_numbers_count(hashids_t *hashids, const char *str);
 
 size_t
-hashids_decode(hashids_t *hashids, char *str,
+hashids_decode(hashids_t *hashids, const char *str,
+    unsigned long long *numbers, size_t numbers_max);
+
+size_t
+hashids_decode_unsafe(hashids_t *hashids, const char *str,
     unsigned long long *numbers);
 
 size_t
-hashids_encode_hex(hashids_t *hashids, char *buffer,
-    const char *hex_str);
+hashids_decode_safe(hashids_t *hashids, const char *str,
+    unsigned long long *numbers, size_t numbers_max);
+
+size_t
+hashids_encode_hex(hashids_t *hashids, char *buffer, const char *hex_str);
 
 size_t
 hashids_decode_hex(hashids_t *hashids, char *str, char *output);

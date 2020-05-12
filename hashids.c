@@ -19,8 +19,28 @@
 #   define HASHIDS_UNLIKELY(x)      (x)
 #endif
 
-/* exported hashids_errno */
-int hashids_errno;
+/* fallthrough warning suppression */
+#ifndef __has_feature
+#   define __has_feature(x) (0)
+#endif
+#if __has_feature(fallthrough)
+#   define ATTRIBUTE_FALLTHROUGH __attribute__((fallthrough))
+#else
+#   define ATTRIBUTE_FALLTHROUGH
+#endif
+
+/* thread-local storage */
+#ifndef TLS
+#define TLS
+#endif
+
+/* thread-safe hashids_errno indirection */
+TLS int __hashids_errno_val;
+int *
+__hashids_errno_addr()
+{
+    return &__hashids_errno_val;
+}
 
 /* default alloc() implementation */
 static inline void *
@@ -104,36 +124,67 @@ hashids_shuffle(char *str, size_t str_length, char *salt, size_t salt_length)
     for (i = str_length - 1, v = 0, p = 0; i > 0; /* empty */) {
         switch (i % 32) {
             case 31: hashids_shuffle_step(i);
+                /* fall through */
             case 30: hashids_shuffle_step(i);
+                /* fall through */
             case 29: hashids_shuffle_step(i);
+                /* fall through */
             case 28: hashids_shuffle_step(i);
+                /* fall through */
             case 27: hashids_shuffle_step(i);
+                /* fall through */
             case 26: hashids_shuffle_step(i);
+                /* fall through */
             case 25: hashids_shuffle_step(i);
+                /* fall through */
             case 24: hashids_shuffle_step(i);
+                /* fall through */
             case 23: hashids_shuffle_step(i);
+                /* fall through */
             case 22: hashids_shuffle_step(i);
+                /* fall through */
             case 21: hashids_shuffle_step(i);
+                /* fall through */
             case 20: hashids_shuffle_step(i);
+                /* fall through */
             case 19: hashids_shuffle_step(i);
+                /* fall through */
             case 18: hashids_shuffle_step(i);
+                /* fall through */
             case 17: hashids_shuffle_step(i);
+                /* fall through */
             case 16: hashids_shuffle_step(i);
+                /* fall through */
             case 15: hashids_shuffle_step(i);
+                /* fall through */
             case 14: hashids_shuffle_step(i);
+                /* fall through */
             case 13: hashids_shuffle_step(i);
+                /* fall through */
             case 12: hashids_shuffle_step(i);
+                /* fall through */
             case 11: hashids_shuffle_step(i);
+                /* fall through */
             case 10: hashids_shuffle_step(i);
+                /* fall through */
             case  9: hashids_shuffle_step(i);
+                /* fall through */
             case  8: hashids_shuffle_step(i);
+                /* fall through */
             case  7: hashids_shuffle_step(i);
+                /* fall through */
             case  6: hashids_shuffle_step(i);
+                /* fall through */
             case  5: hashids_shuffle_step(i);
+                /* fall through */
             case  4: hashids_shuffle_step(i);
+                /* fall through */
             case  3: hashids_shuffle_step(i);
+                /* fall through */
             case  2: hashids_shuffle_step(i);
+                /* fall through */
             case  1: hashids_shuffle_step(i);
+                /* fall through */
             case  0: hashids_shuffle_step(i);
         }
     }
@@ -178,7 +229,7 @@ hashids_init3(const char *salt, size_t min_hash_length, const char *alphabet)
     hashids_errno = HASHIDS_ERROR_OK;
 
     /* allocate the structure */
-    result = _hashids_alloc(sizeof(hashids_t));
+    result = (hashids_t *)_hashids_alloc(sizeof(hashids_t));
     if (HASHIDS_UNLIKELY(!result)) {
         hashids_errno = HASHIDS_ERROR_ALLOC;
         return NULL;
@@ -186,7 +237,7 @@ hashids_init3(const char *salt, size_t min_hash_length, const char *alphabet)
 
     /* allocate enough space for the alphabet */
     len = strlen(alphabet) + 1;
-    result->alphabet = _hashids_alloc(len);
+    result->alphabet = (char *)_hashids_alloc(len);
 
     /* extract only the unique characters */
     result->alphabet[0] = '\0';
@@ -215,7 +266,7 @@ hashids_init3(const char *salt, size_t min_hash_length, const char *alphabet)
 
     /* copy salt */
     result->salt_length = salt ? strlen(salt) : 0;
-    result->salt = _hashids_alloc(result->salt_length + 1);
+    result->salt = (char *)_hashids_alloc(result->salt_length + 1);
     if (HASHIDS_UNLIKELY(!result->salt)) {
         hashids_free(result);
         hashids_errno = HASHIDS_ERROR_ALLOC;
@@ -231,7 +282,7 @@ hashids_init3(const char *salt, size_t min_hash_length, const char *alphabet)
         j = len + 1;
     }
 
-    result->separators = _hashids_alloc(j);
+    result->separators = (char *)_hashids_alloc(j);
     if (HASHIDS_UNLIKELY(!result->separators)) {
         hashids_free(result);
         hashids_errno = HASHIDS_ERROR_ALLOC;
@@ -298,7 +349,7 @@ hashids_init3(const char *salt, size_t min_hash_length, const char *alphabet)
     /* allocate guards */
     result->guards_count = hashids_div_ceil_size_t(result->alphabet_length,
         HASHIDS_GUARD_DIVISOR);
-    result->guards = _hashids_alloc(result->guards_count + 1);
+    result->guards = (char *)_hashids_alloc(result->guards_count + 1);
     if (HASHIDS_UNLIKELY(!result->guards)) {
         hashids_free(result);
         hashids_errno = HASHIDS_ERROR_ALLOC;
@@ -322,8 +373,10 @@ hashids_init3(const char *salt, size_t min_hash_length, const char *alphabet)
     }
 
     /* allocate enough space for the alphabet copies */
-    result->alphabet_copy_1 = _hashids_alloc(result->alphabet_length + 1);
-    result->alphabet_copy_2 = _hashids_alloc(result->alphabet_length + 1);
+    result->alphabet_copy_1 = (char *)_hashids_alloc(result->alphabet_length +
+        1);
+    result->alphabet_copy_2 = (char *)_hashids_alloc(result->alphabet_length +
+        1);
     if (HASHIDS_UNLIKELY(!result->alphabet || !result->alphabet_copy_1
         || !result->alphabet_copy_2)) {
         hashids_free(result);
@@ -357,7 +410,7 @@ size_t
 hashids_estimate_encoded_size(hashids_t *hashids,
     size_t numbers_count, unsigned long long *numbers)
 {
-    int i, result_len;
+    size_t i, result_len;
 
     for (i = 0, result_len = 1; i < numbers_count; ++i) {
         if (numbers[i] == 0) {
@@ -393,7 +446,8 @@ hashids_estimate_encoded_size_v(hashids_t *hashids,
     unsigned long long *numbers;
     va_list ap;
 
-    numbers = _hashids_alloc(numbers_count * sizeof(unsigned long long));
+    numbers = (unsigned long long *)_hashids_alloc(numbers_count *
+        sizeof(unsigned long long));
 
     if (HASHIDS_UNLIKELY(!numbers)) {
         hashids_errno = HASHIDS_ERROR_ALLOC;
@@ -417,17 +471,17 @@ size_t
 hashids_encode(hashids_t *hashids, char *buffer,
     size_t numbers_count, unsigned long long *numbers)
 {
-    size_t i, j, result_len, guard_index, half_length_ceil, half_length_floor;
-    unsigned long long number, number_copy, numbers_hash;
-    int p_max;
-    char lottery, ch, temp_ch, *p, *buffer_end, *buffer_temp;
-
     /* bail out if no numbers */
     if (HASHIDS_UNLIKELY(!numbers_count)) {
         buffer[0] = '\0';
 
         return 0;
     }
+
+    size_t i, j, result_len, guard_index, half_length_ceil, half_length_floor;
+    unsigned long long number, number_copy, numbers_hash;
+    int p_max;
+    char lottery, ch, temp_ch, *p, *buffer_end, *buffer_temp;
 
     /* return an estimation if no buffer */
     if (HASHIDS_UNLIKELY(!buffer)) {
@@ -487,7 +541,7 @@ hashids_encode(hashids_t *hashids, char *buffer,
         } while (number);
 
         /* reverse the hash we got */
-        for (j = 0; j < (buffer_end - buffer_temp) / 2; ++j) {
+        for (j = 0; j < (size_t)((buffer_end - buffer_temp) / 2); ++j) {
             temp_ch = *(buffer_temp + j);
             *(buffer_temp + j) = *(buffer_end - 1 - j);
             *(buffer_end - 1 - j) = temp_ch;
@@ -573,12 +627,12 @@ size_t
 hashids_encode_v(hashids_t *hashids, char *buffer,
     size_t numbers_count, ...)
 {
-    int i;
-    size_t result;
+    size_t i, result;
     unsigned long long *numbers;
     va_list ap;
 
-    numbers = _hashids_alloc(numbers_count * sizeof(unsigned long long));
+    numbers = (unsigned long long *)_hashids_alloc(numbers_count *
+        sizeof(unsigned long long));
 
     if (HASHIDS_UNLIKELY(!numbers)) {
         hashids_errno = HASHIDS_ERROR_ALLOC;
@@ -607,10 +661,11 @@ hashids_encode_one(hashids_t *hashids, char *buffer,
 
 /* numbers count */
 size_t
-hashids_numbers_count(hashids_t *hashids, char *str)
+hashids_numbers_count(hashids_t *hashids, const char *str)
 {
     size_t numbers_count;
-    char ch, *p;
+    char ch;
+    const char *p;
 
     /* skip characters until we find a guard */
     if (hashids->min_hash_length) {
@@ -650,23 +705,21 @@ hashids_numbers_count(hashids_t *hashids, char *str)
 
 /* decode */
 size_t
-hashids_decode(hashids_t *hashids, char *str,
-    unsigned long long *numbers)
+hashids_decode(hashids_t *hashids, const char *str,
+    unsigned long long *numbers, size_t numbers_max)
 {
     size_t numbers_count;
     unsigned long long number;
     char lottery, ch, *p, *c;
     int p_max;
 
-    numbers_count = hashids_numbers_count(hashids, str);
-
-    if (!numbers) {
-        return numbers_count;
+    if (!numbers || !numbers_max) {
+        return hashids_numbers_count(hashids, str);
     }
 
     /* skip characters until we find a guard */
     if (hashids->min_hash_length) {
-        p = str;
+        p = (char *)str;
         while ((ch = *p)) {
             if (strchr(hashids->guards, ch)) {
                 str = p + 1;
@@ -703,13 +756,21 @@ hashids_decode(hashids_t *hashids, char *str,
         hashids->alphabet_copy_2, hashids->alphabet_length);
 
     /* parse */
+    numbers_count = 0;
     number = 0;
     while ((ch = *str)) {
         if (strchr(hashids->guards, ch)) {
             break;
         }
         if (strchr(hashids->separators, ch)) {
+            /* store the number */
             *numbers++ = number;
+
+            /* check limit */
+            if (++numbers_count >= numbers_max) {
+                return numbers_count;
+            }
+
             number = 0;
 
             /* resalt the alphabet */
@@ -736,6 +797,53 @@ hashids_decode(hashids_t *hashids, char *str,
     /* store last number */
     *numbers = number;
 
+    return numbers_count + 1;
+}
+
+/* unsafe decode */
+size_t
+hashids_decode_unsafe(hashids_t *hashids, const char *str,
+    unsigned long long *numbers)
+{
+    return hashids_decode(hashids, str, numbers, (size_t)-1);
+}
+
+/* safe decode */
+size_t
+hashids_decode_safe(hashids_t *hashids, const char *str,
+    unsigned long long *numbers, size_t numbers_max)
+{
+    size_t numbers_count;
+    size_t len;
+    char *p;
+
+    numbers_count = hashids_decode(hashids, str, numbers, numbers_max);
+    if (HASHIDS_UNLIKELY(!numbers_count)) {
+        hashids_errno = HASHIDS_ERROR_INVALID_HASH;
+        return 0;
+    }
+
+    len = hashids_estimate_encoded_size(hashids, numbers_count, numbers);
+
+    p = (char *)_hashids_alloc(len);
+    if (HASHIDS_UNLIKELY(!p)) {
+        hashids_errno = HASHIDS_ERROR_ALLOC;
+        return 0;
+    }
+
+    len = hashids_encode(hashids, p, numbers_count, numbers);
+    if (HASHIDS_UNLIKELY(!len)) {
+        _hashids_free(p);
+        return 0;
+    }
+
+    if (strcmp(str, p) != 0) {
+        _hashids_free(p);
+        hashids_errno = HASHIDS_ERROR_INVALID_HASH;
+        return 0;
+    }
+
+    _hashids_free(p);
     return numbers_count;
 }
 
@@ -750,7 +858,7 @@ hashids_encode_hex(hashids_t *hashids, char *buffer,
     unsigned long long number;
 
     len = strlen(hex_str);
-    temp = _hashids_alloc(len + 2);
+    temp = (char *)_hashids_alloc(len + 2);
 
     if (!temp) {
         hashids_errno = HASHIDS_ERROR_ALLOC;
@@ -788,7 +896,7 @@ hashids_decode_hex(hashids_t *hashids, char *str, char *output)
         return 0;
     }
 
-    result = hashids_decode(hashids, str, &number);
+    result = hashids_decode(hashids, str, &number, 1);
 
     if (result != 1) {
         return 0;
