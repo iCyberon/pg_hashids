@@ -66,7 +66,7 @@ Returns a hash using the supplied `alphabet`, `salt` and minimum hash length.
 	SELECT id_encode(1234567, 'This is my salt', 10, 'abcdefghijABCDxFGHIJ1234567890'); -- Result: 3GJ956J9B9
 
 #### Decoding
-You can also decode previouslt generated hashes. Just use the same `salt`, otherwise you'll get wrong results.
+You can also decode previously generated hashes. Just use the same `salt`, otherwise you'll get wrong results.
 
 	SELECT id_decode('PlRPdzxpR7', 'This is my salt', 10); -- Result: 1234567
 	
