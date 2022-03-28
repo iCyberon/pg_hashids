@@ -21,8 +21,9 @@ build tools in general.
 
 Then in a psql session issue:
 
-    CREATE extension pg_hashids;
-
+```sql
+CREATE extension pg_hashids;
+```
 
 Update
 ============
@@ -33,16 +34,22 @@ Install as usual.
     
 Then in a psql session issue:
 
-    ALTER EXTENSION pg_hashids UPDATE;
+```sql
+ALTER EXTENSION pg_hashids UPDATE;
+```
     
 or
 
-    DROP EXTENSION pg_hashids;
-    CREATE EXTENSION pg_hashids;
+```sql
+DROP EXTENSION pg_hashids;
+CREATE EXTENSION pg_hashids;
+```
     
 Check
 
-    SELECT default_version, installed_version FROM pg_available_extensions WHERE name = 'pg_hashids';
+```sql
+SELECT default_version, installed_version FROM pg_available_extensions WHERE name = 'pg_hashids';
+```
 
 
 Usage
@@ -50,27 +57,39 @@ Usage
 #### Encoding
 Returns a hash using the default `alphabet` and empty `salt`.
 
-	SELECT id_encode(1001); -- Result: jNl
+```sql
+SELECT id_encode(1001); -- Result: jNl
+```
 
 Returns a hash using the default `alphabet` and supplied `salt`.
 
-	SELECT id_encode(1234567, 'This is my salt'); -- Result: Pdzxp
+```sql
+SELECT id_encode(1234567, 'This is my salt'); -- Result: Pdzxp
+```
 
 Returns a hash using the default `alphabet`, `salt` and minimum hash length.
-	
-	SELECT id_encode(1234567, 'This is my salt', 10); -- Result: PlRPdzxpR7
+
+```sql
+SELECT id_encode(1234567, 'This is my salt', 10); -- Result: PlRPdzxpR7
+```
 	
 
 Returns a hash using the supplied `alphabet`, `salt` and minimum hash length.
-	
-	SELECT id_encode(1234567, 'This is my salt', 10, 'abcdefghijABCDxFGHIJ1234567890'); -- Result: 3GJ956J9B9
+
+```sql
+SELECT id_encode(1234567, 'This is my salt', 10, 'abcdefghijABCDxFGHIJ1234567890'); -- Result: 3GJ956J9B9
+```
 
 #### Decoding
 You can also decode previously generated hashes. Just use the same `salt`, otherwise you'll get wrong results.
 
-	SELECT id_decode('PlRPdzxpR7', 'This is my salt', 10); -- Result: 1234567
+```sql
+SELECT id_decode('PlRPdzxpR7', 'This is my salt', 10); -- Result: 1234567
+```
 	
 Using a custom alphabet
 
-	SELECT id_decode('3GJ956J9B9', 'This is my salt', 10, 'abcdefghijABCDxFGHIJ1234567890'); -- Result: 1234567
+```sql
+SELECT id_decode('3GJ956J9B9', 'This is my salt', 10, 'abcdefghijABCDxFGHIJ1234567890'); -- Result: 1234567
+```
 
