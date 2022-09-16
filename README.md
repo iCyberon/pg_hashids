@@ -17,7 +17,14 @@ Installation
 Make sure you have development packages installed for postgres and
 build tools in general.
 
-    make; sudo make install
+```bash
+$ git clone https://github.com/iCyberon/pg_hashids
+$ cd pg_hashids
+# Make sure your path includes the bin directory that contains the correct `pg_config`
+$ PATH=/path/to/pg/bin:$PATH
+$ USE_PGXS=1 make
+$ USE_PGXS=1 make install
+```
 
 Then in a psql session issue:
 
@@ -30,8 +37,15 @@ Update
 
 Install as usual.
 
-    make; sudo make install
-    
+```bash
+$ git clone https://github.com/iCyberon/pg_hashids
+$ cd pg_hashids
+# Make sure your path includes the bin directory that contains the correct `pg_config`
+$ PATH=/path/to/pg/bin:$PATH
+$ USE_PGXS=1 make
+$ USE_PGXS=1 make install
+```
+
 Then in a psql session issue:
 
 ```sql
@@ -51,6 +65,12 @@ Check
 SELECT default_version, installed_version FROM pg_available_extensions WHERE name = 'pg_hashids';
 ```
 
+Tests
+============
+
+```bash
+$ USE_PGXS=1 make installcheck
+```
 
 Usage
 ============
