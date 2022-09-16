@@ -1,0 +1,76 @@
+\set VERBOSITY terse
+CREATE EXTENSION pg_hashids;
+-- Encoding tests
+SELECT id_encode(1001); -- Result: jNl
+ id_encode 
+-----------
+ jNl
+(1 row)
+
+SELECT id_encode(1234567, 'This is my salt'); -- Result: Pdzxp
+ id_encode 
+-----------
+ Pdzxp
+(1 row)
+
+SELECT id_encode(1234567, 'This is my salt', 10); -- Result: PlRPdzxpR7
+ id_encode  
+------------
+ PlRPdzxpR7
+(1 row)
+
+SELECT id_encode(1234567, 'This is my salt', 10, 'abcdefghijABCDxFGHIJ1234567890'); -- Result: 3GJ956J9B9
+ id_encode  
+------------
+ 3GJ956J9B9
+(1 row)
+
+-- Decoding tests
+SELECT id_decode('jNl'); -- Result: {1001}
+ id_decode 
+-----------
+ {1001}
+(1 row)
+
+SELECT id_decode('Pdzxp', 'This is my salt'); -- Result: {1234567}
+ id_decode 
+-----------
+ {1234567}
+(1 row)
+
+SELECT id_decode('PlRPdzxpR7', 'This is my salt', 10); -- Result: {1234567}
+ id_decode 
+-----------
+ {1234567}
+(1 row)
+
+SELECT id_decode('3GJ956J9B9', 'This is my salt', 10, 'abcdefghijABCDxFGHIJ1234567890'); -- Result: {1234567}
+ id_decode 
+-----------
+ {1234567}
+(1 row)
+
+SELECT id_decode_once('jNl'); -- Result: 1001
+ id_decode_once 
+----------------
+           1001
+(1 row)
+
+SELECT id_decode_once('Pdzxp', 'This is my salt'); -- Result: 1234567
+ id_decode_once 
+----------------
+        1234567
+(1 row)
+
+SELECT id_decode_once('PlRPdzxpR7', 'This is my salt', 10); -- Result: 1234567
+ id_decode_once 
+----------------
+        1234567
+(1 row)
+
+SELECT id_decode_once('3GJ956J9B9', 'This is my salt', 10, 'abcdefghijABCDxFGHIJ1234567890'); -- Result: 1234567
+ id_decode_once 
+----------------
+        1234567
+(1 row)
+
