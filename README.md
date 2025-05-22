@@ -113,3 +113,26 @@ Using a custom alphabet
 SELECT id_decode('3GJ956J9B9', 'This is my salt', 10, 'abcdefghijABCDxFGHIJ1234567890'); -- Result: 1234567
 ```
 
+#### Decoding a single id
+You can also decode a previously generated hash into a single integer. Just use the same `salt`, otherwise you'll get wrong results.
+The `id_decode_once` function is useful when you expect only one number to be encoded in the hash.
+
+```sql
+SELECT id_decode_once('jNl'); -- Result: 1001
+```
+
+Using salt:
+```sql
+SELECT id_decode_once('Pdzxp', 'This is my salt'); -- Result: 1234567
+```
+
+Using salt and min_length:
+```sql
+SELECT id_decode_once('PlRPdzxpR7', 'This is my salt', 10); -- Result: 1234567
+```
+	
+Using a custom alphabet:
+```sql
+SELECT id_decode_once('3GJ956J9B9', 'This is my salt', 10, 'abcdefghijABCDxFGHIJ1234567890'); -- Result: 1234567
+```
+
