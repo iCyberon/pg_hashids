@@ -25,6 +25,13 @@ SELECT id_encode(1234567, 'This is my salt', 10, 'abcdefghijABCDxFGHIJ1234567890
  3GJ956J9B9
 (1 row)
 
++-- Should fail: encoding negative numbers is not supported
++SELECT id_encode(-1);
++ERROR:  negative numbers are not supported
++SELECT id_encode_array(ARRAY[-1::bigint]);
++ERROR:  function id_encode_array(bigint[]) does not exist at character 8
++SELECT id_encode_array(ARRAY[1::bigint, -1::bigint, 2::bigint]);
++ERROR:  function id_encode_array(bigint[]) does not exist at character 8
 -- Decoding tests
 SELECT id_decode('jNl'); -- Result: {1001}
  id_decode 
