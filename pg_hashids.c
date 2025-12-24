@@ -72,6 +72,10 @@ id_encode(PG_FUNCTION_ARGS)
 	// Arguments
 	number = PG_GETARG_INT64(0);
 
+	if (number < 0) {
+		ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("negative numbers are not supported")));
+	}
+
 	if (PG_NARGS() == 2) {
 		hashids = hashids_init2(text_to_cstring(PG_GETARG_TEXT_P(1)), 0);
 	} else if (PG_NARGS() == 3) {
@@ -112,6 +116,12 @@ id_encode_array(PG_FUNCTION_ARGS)
 	// Arguments
 	numbers = PG_GETARG_ARRAYTYPE_P(0);
 	numbers_count = ARR_DIMS(numbers)[0];
+
+	for (size_t i = 0; i < numbers_count; i++) {
+		if (((int64 *) ARR_DATA_PTR(numbers))[i] < 0) {
+			ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("negative numbers are not supported for array elements")));
+		}
+	}
 
 	if (array_contains_nulls(numbers)) {
 		ereport(ERROR,
